@@ -129,6 +129,15 @@ Search for mentions of "budget" in my recordings
 Find discussions about AI in my podcasts
 ```
 
+### Manage Your Library
+
+```
+List all my transcribed audio files
+Delete the recording from last week
+Get the full transcript of meeting.mp3
+Summarize the podcast episode
+```
+
 ## Available Models
 
 | Model | Best For |
@@ -143,6 +152,17 @@ Find discussions about AI in my podcasts
 ## Supported Audio Formats
 
 `.mp3` `.mp4` `.m4a` `.wav` `.webm` `.mpeg` `.mpga`
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `ingest_audio` | Transcribe and store an audio file |
+| `search_transcripts` | Search through your audio using natural language |
+| `list_transcripts` | List all transcribed audio files |
+| `get_full_transcript` | Get the complete transcript of a file |
+| `summarize_audio` | Generate an AI summary of a transcript |
+| `delete_transcript` | Remove a transcribed file from the database |
 
 ## Troubleshooting
 

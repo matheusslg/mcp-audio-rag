@@ -224,6 +224,200 @@ server.tool(
   }
 );
 
+// Summarize Audio Tool
+server.tool(
+  "summarize_audio",
+  "Generate an AI summary of a transcribed audio file.",
+  {
+    source_file: z.string().describe("Name of the audio file to summarize (e.g., 'meeting.mp3')"),
+    model: z.string().optional().describe(`Gemini model to use. Available: ${AVAILABLE_MODELS.join(", ")}. Default: ${DEFAULT_MODEL}`),
+  },
+  async ({ source_file, model }) => {
+    const selectedModel = model && AVAILABLE_MODELS.includes(model) ? model : DEFAULT_MODEL;
+
+    try {
+      // Get full transcript
+      const { data, error } = await supabase
+        .from("transcripts")
+        .select("content")
+        .eq("source_file", source_file)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        return {
+          content: [{ type: "text" as const, text: `Database error: ${error.message}` }],
+          isError: true,
+        };
+      }
+
+      if (!data || data.length === 0) {
+        return {
+          content: [{ type: "text" as const, text: `No transcript found for "${source_file}". Use list_transcripts to see available files.` }],
+        };
+      }
+
+      const fullText = data.map((row) => row.content).join(" ");
+
+      // Generate summary with Gemini
+      const summaryResult = await ai.models.generateContent({
+        model: selectedModel,
+        contents: `Please provide a comprehensive summary of the following transcript. Include the main topics discussed, key points, and any important conclusions or action items:\n\n${fullText}`,
+      });
+
+      const summary = summaryResult.text || "Unable to generate summary.";
+
+      return {
+        content: [{ type: "text" as const, text: `Summary of "${source_file}" (generated with ${selectedModel}):\n\n${summary}` }],
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      return {
+        content: [{ type: "text" as const, text: `Error: ${errorMessage}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Get Full Transcript Tool
+server.tool(
+  "get_full_transcript",
+  "Get the complete transcript text for a specific audio file.",
+  {
+    source_file: z.string().describe("Name of the audio file (e.g., 'meeting.mp3')"),
+  },
+  async ({ source_file }) => {
+    try {
+      const { data, error } = await supabase
+        .from("transcripts")
+        .select("content")
+        .eq("source_file", source_file)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        return {
+          content: [{ type: "text" as const, text: `Database error: ${error.message}` }],
+          isError: true,
+        };
+      }
+
+      if (!data || data.length === 0) {
+        return {
+          content: [{ type: "text" as const, text: `No transcript found for "${source_file}". Use list_transcripts to see available files.` }],
+        };
+      }
+
+      const fullText = data.map((row) => row.content).join(" ");
+
+      return {
+        content: [{ type: "text" as const, text: `Transcript for "${source_file}" (${data.length} chunks, ${fullText.length} characters):\n\n${fullText}` }],
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      return {
+        content: [{ type: "text" as const, text: `Error: ${errorMessage}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// Delete Transcript Tool
+server.tool(
+  "delete_transcript",
+  "Delete all stored data for a specific audio file from the knowledge base.",
+  {
+    source_file: z.string().describe("Name of the audio file to delete (e.g., 'meeting.mp3')"),
+  },
+  async ({ source_file }) => {
+    try {
+      const { data, error } = await supabase
+        .from("transcripts")
+        .delete()
+        .eq("source_file", source_file)
+        .select();
+
+      if (error) {
+        return {
+          content: [{ type: "text" as const, text: `Database error: ${error.message}` }],
+          isError: true,
+        };
+      }
+
+      if (!data || data.length === 0) {
+        return {
+          content: [{ type: "text" as const, text: `No transcript found for "${source_file}". Use list_transcripts to see available files.` }],
+        };
+      }
+
+      return {
+        content: [{ type: "text" as const, text: `Deleted ${data.length} chunks for "${source_file}".` }],
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      return {
+        content: [{ type: "text" as const, text: `Error: ${errorMessage}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// List Transcripts Tool
+server.tool(
+  "list_transcripts",
+  "List all audio files that have been transcribed and stored in the knowledge base.",
+  {},
+  async () => {
+    try {
+      const { data, error } = await supabase
+        .from("transcripts")
+        .select("source_file, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        return {
+          content: [{ type: "text" as const, text: `Database error: ${error.message}` }],
+          isError: true,
+        };
+      }
+
+      if (!data || data.length === 0) {
+        return {
+          content: [{ type: "text" as const, text: "No transcripts found. Use ingest_audio to add audio files." }],
+        };
+      }
+
+      // Group by source_file and count chunks
+      const fileMap = new Map<string, { count: number; earliestDate: string }>();
+      for (const row of data) {
+        const existing = fileMap.get(row.source_file);
+        if (existing) {
+          existing.count++;
+        } else {
+          fileMap.set(row.source_file, { count: 1, earliestDate: row.created_at });
+        }
+      }
+
+      const lines: string[] = [`Found ${fileMap.size} transcribed audio file(s):\n`];
+      for (const [fileName, info] of fileMap) {
+        const date = new Date(info.earliestDate).toLocaleDateString();
+        lines.push(`- ${fileName} (${info.count} chunks, added ${date})`);
+      }
+
+      return {
+        content: [{ type: "text" as const, text: lines.join("\n") }],
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      return {
+        content: [{ type: "text" as const, text: `Error: ${errorMessage}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
 // Search Tool
 server.tool(
   "search_transcripts",
