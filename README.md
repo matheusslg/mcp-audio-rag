@@ -12,10 +12,22 @@ Claude ← MCP Server ← Vector Search ←────────────�
 
 ## Features
 
-- **Transcription**: Uses Gemini 2.5 Flash for accurate audio transcription
+- **Transcription**: Uses Gemini models for accurate audio transcription (model selection supported)
 - **Embeddings**: Uses Gemini text-embedding-004 (768 dimensions)
 - **Vector Search**: PostgreSQL with pgvector for semantic similarity search
 - **MCP Integration**: Works with Claude Code CLI and Claude Desktop
+- **Model Selection**: Choose from multiple Gemini models for transcription
+
+## Available Models
+
+| Model | Description |
+|-------|-------------|
+| `gemini-3-pro-preview` | Newest, most intelligent |
+| `gemini-2.5-flash` | **Default** - best price/performance |
+| `gemini-2.5-flash-lite` | Ultra fast, cheapest |
+| `gemini-2.5-pro` | Advanced thinking/reasoning |
+| `gemini-2.0-flash` | Previous gen workhorse |
+| `gemini-2.0-flash-lite` | Previous gen fast |
 
 ## Prerequisites
 
@@ -28,7 +40,7 @@ Claude ← MCP Server ← Vector Search ←────────────�
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/mcp-audio-rag.git
+git clone https://github.com/matheusslg/mcp-audio-rag.git
 cd mcp-audio-rag
 npm install
 ```
@@ -81,7 +93,8 @@ SUPABASE_SERVICE_KEY=your-service-role-key
 Transcribe an audio file and store it in the knowledge base.
 
 **Parameters:**
-- `file_path` (string): Absolute path to the audio file
+- `file_path` (string, required): Absolute path to the audio file
+- `model` (string, optional): Gemini model to use for transcription. Default: `gemini-2.5-flash`
 
 **Supported formats:** `.mp3`, `.mp4`, `.mpeg`, `.mpga`, `.m4a`, `.wav`, `.webm`
 
@@ -89,7 +102,7 @@ Transcribe an audio file and store it in the knowledge base.
 Search through stored transcriptions for specific topics or quotes.
 
 **Parameters:**
-- `query` (string): The topic or question to search for
+- `query` (string, required): The topic or question to search for
 - `match_count` (number, optional): Number of results to return (default: 5)
 
 ## Configuring MCP Clients
@@ -138,10 +151,15 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (Mac) or 
 
 Once configured, you can ask Claude:
 
+**Ingestion:**
 - "Transcribe /path/to/meeting.mp3"
+- "Ingest /path/to/podcast.m4a using gemini-2.5-pro"
+- "Transcribe this audio with gemini-3-pro-preview: /path/to/lecture.wav"
+
+**Search:**
 - "Search my audio recordings for discussions about project deadlines"
-- "What did I say about the marketing budget in my recordings?"
-- "Find any mentions of the client meeting in my audio notes"
+- "What did they say about vector search in my recordings?"
+- "Find any mentions of architecture in my audio notes"
 
 ## Project Structure
 
@@ -159,7 +177,7 @@ mcp-audio-rag/
 
 ## How It Works
 
-1. **Ingestion**: Audio files are uploaded to Gemini, transcribed, chunked into segments with overlap, converted to embeddings, and stored in Supabase with pgvector.
+1. **Ingestion**: Audio files are uploaded to Gemini, transcribed using your chosen model, chunked into segments with overlap (1000 chars, 200 overlap), converted to embeddings, and stored in Supabase with pgvector.
 
 2. **Search**: When you ask Claude a question, the MCP server converts your query to an embedding and performs a vector similarity search to find the most relevant transcript segments.
 
@@ -174,10 +192,15 @@ mcp-audio-rag/
 **"No relevant audio segments found"**
 - The default similarity threshold is 0.3
 - Ensure you've ingested audio files first
+- Try rephrasing your search query
 
 **Supabase connection errors**
 - Verify your SUPABASE_URL starts with `https://`
 - Ensure you're using the `service_role` key, not the `anon` key
+
+**Transcription taking too long**
+- Try using `gemini-2.5-flash-lite` or `gemini-2.0-flash-lite` for faster processing
+- Large audio files take longer to upload and process
 
 ## License
 
