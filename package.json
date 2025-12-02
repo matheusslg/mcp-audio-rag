@@ -1,0 +1,27 @@
+{
+  "name": "mcp-audio-rag",
+  "version": "1.0.0",
+  "description": "MCP server for semantic search over audio transcriptions",
+  "type": "module",
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts"
+  },
+  "keywords": [
+    "mcp",
+    "rag",
+    "audio",
+    "transcription",
+    "semantic-search"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^0.10.0",
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "@supabase/supabase-js": "^2.86.0",
+    "dotenv": "^17.2.3",
+    "zod": "^4.1.13"
+  }
+}
