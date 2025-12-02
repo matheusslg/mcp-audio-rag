@@ -81,14 +81,29 @@ async function generateEmbedding(text: string): Promise<number[]> {
   return response.embeddings?.[0]?.values || [];
 }
 
+const DEFAULT_MODEL = "gemini-2.5-flash";
+const AVAILABLE_MODELS = [
+  // Gemini 3
+  "gemini-3-pro-preview",
+  // Gemini 2.5
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-pro",
+  // Gemini 2.0
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+];
+
 // Ingest Audio Tool
 server.tool(
   "ingest_audio",
   "Transcribe an audio file and store it in the knowledge base for later searching.",
   {
     file_path: z.string().describe("Absolute path to the audio file to transcribe"),
+    model: z.string().optional().describe(`Gemini model to use for transcription. Available: ${AVAILABLE_MODELS.join(", ")}. Default: ${DEFAULT_MODEL}`),
   },
-  async ({ file_path }) => {
+  async ({ file_path, model }) => {
+    const selectedModel = model && AVAILABLE_MODELS.includes(model) ? model : DEFAULT_MODEL;
     try {
       // Validate file exists
       if (!fs.existsSync(file_path)) {
@@ -142,10 +157,10 @@ server.tool(
       results.push("Upload complete\n");
 
       // Step 2: Transcribe with Gemini
-      results.push("Transcribing audio with Gemini...");
+      results.push(`Transcribing audio with ${selectedModel}...`);
 
       const transcriptionResult = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: selectedModel,
         contents: [
           createPartFromUri(file.uri!, file.mimeType!),
           "Transcribe this audio file. Output only the transcription text, nothing else. Do not add any commentary, timestamps, or speaker labels unless they are clearly spoken in the audio.",
